@@ -27,7 +27,9 @@ router.get("/matches", async (req, res, next) => {
   JOIN 
       sets S ON MR.matchID = S.matchID
   JOIN 
-      players PW ON MR.winnerID = PW.playerID;`
+      players PW ON MR.winnerID = PW.playerID
+  WHERE 
+      MR.tournamentID IS NULL;`
     );
     res.send(rows);
   } catch (err) {
