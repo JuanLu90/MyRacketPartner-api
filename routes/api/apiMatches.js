@@ -87,6 +87,7 @@ router.get("/matchDetails/:matchID", async (req, res, next) => {
         player2Score: set.player2Score,
         winnerId: set.winnerID,
       })),
+      totalSets: "",
     };
 
     const winnerCounter = groupedData.sets.reduce((acc, set) => {
@@ -101,6 +102,11 @@ router.get("/matchDetails/:matchID", async (req, res, next) => {
     );
 
     groupedData.winnerId = matchWinnerID;
+
+    const player1SetWins = winnerCounter[groupedData.player1.id] || 0;
+    const player2SetWins = winnerCounter[groupedData.player2.id] || 0;
+
+    groupedData.totalSets = `${player1SetWins}-${player2SetWins}`;
 
     res.send(groupedData);
   } catch (err) {
