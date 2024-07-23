@@ -70,27 +70,27 @@ router.get("/matchDetails/:matchID", async (req, res, next) => {
 
     // Agrupando datos
     const groupedData = {
-      matchID: rows[0].matchID,
-      matchDate: rows[0].matchDate,
+      id: rows[0].matchID,
+      date: rows[0].matchDate,
       player1: {
-        playerID: rows[0].player1ID,
-        playerName: rows[0].player1Name,
+        id: rows[0].player1ID,
+        name: rows[0].player1Name,
       },
       player2: {
-        playerID: rows[0].player2ID,
-        playerName: rows[0].player2Name,
+        id: rows[0].player2ID,
+        name: rows[0].player2Name,
       },
-      matchWinner: {},
+      winnerId: null,
       sets: rows.map((set) => ({
-        setID: set.setID,
+        setId: set.setID,
         player1Score: set.player1Score,
         player2Score: set.player2Score,
-        winnerID: set.winnerID,
+        winnerId: set.winnerID,
       })),
     };
 
     const winnerCounter = groupedData.sets.reduce((acc, set) => {
-      acc[set.winnerID] = (acc[set.winnerID] || 0) + 1;
+      acc[set.winnerId] = (acc[set.winnerId] || 0) + 1;
       return acc;
     }, {});
 
@@ -100,13 +100,7 @@ router.get("/matchDetails/:matchID", async (req, res, next) => {
       )
     );
 
-    groupedData.matchWinner = {
-      playerID: matchWinnerID,
-      playerName:
-        matchWinnerID === groupedData.player1.playerID
-          ? groupedData.player1.playerName
-          : groupedData.player2.playerName,
-    };
+    groupedData.winnerId = matchWinnerID;
 
     res.send(groupedData);
   } catch (err) {
