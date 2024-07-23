@@ -80,14 +80,15 @@ router.get("/matchDetails/:matchID", async (req, res, next) => {
         id: rows[0].player2ID,
         name: rows[0].player2Name,
       },
-      winnerId: null,
+      winnerId: 0,
       sets: rows.map((set) => ({
         setId: set.setID,
         player1Score: set.player1Score,
         player2Score: set.player2Score,
         winnerId: set.winnerID,
       })),
-      totalSets: "",
+      totalSetsPlayer1: 0,
+      totalSetsPlayer2: 0,
     };
 
     const winnerCounter = groupedData.sets.reduce((acc, set) => {
@@ -103,10 +104,8 @@ router.get("/matchDetails/:matchID", async (req, res, next) => {
 
     groupedData.winnerId = matchWinnerID;
 
-    const player1SetWins = winnerCounter[groupedData.player1.id] || 0;
-    const player2SetWins = winnerCounter[groupedData.player2.id] || 0;
-
-    groupedData.totalSets = `${player1SetWins}-${player2SetWins}`;
+    groupedData.totalSetsPlayer1 = winnerCounter[groupedData.player1.id] || 0;
+    groupedData.totalSetsPlayer2 = winnerCounter[groupedData.player2.id] || 0;
 
     res.send(groupedData);
   } catch (err) {
@@ -114,5 +113,71 @@ router.get("/matchDetails/:matchID", async (req, res, next) => {
     res.status(500).send("Internal Server Error");
   }
 });
+
+router.get(
+  "/matchDetails/headtohead/:player1Id/:player2Id",
+  async (req, res, next) => {
+    const data = req.params;
+
+    console.log(data);
+    try {
+      console.log("matchID");
+
+      // Usar parámetros en la consulta para prevenir inyecciones SQL
+      const [rows] = await dbConn.promise().execute(
+        `SELECT *
+        FROM matchResults
+        WHERE (Player1ID = 1 AND Player2ID = 2)
+        OR (Player1ID = 2 AND Player2ID = 1);
+`,
+        [data.player1Id, data.player2Id]
+      );
+
+      // Agrupando datos
+      // const groupedData = {
+      //   id: rows[0].matchID,
+      //   date: rows[0].matchDate,
+      //   player1: {
+      //     id: rows[0].player1ID,
+      //     name: rows[0].player1Name,
+      //   },
+      //   player2: {
+      //     id: rows[0].player2ID,
+      //     name: rows[0].player2Name,
+      //   },
+      //   winnerId: 0,
+      //   sets: rows.map((set) => ({
+      //     setId: set.setID,
+      //     player1Score: set.player1Score,
+      //     player2Score: set.player2Score,
+      //     winnerId: set.winnerID,
+      //   })),
+      //   totalSetsPlayer1: 0,
+      //   totalSetsPlayer2: 0,
+      // };
+
+      // const winnerCounter = groupedData.sets.reduce((acc, set) => {
+      //   acc[set.winnerId] = (acc[set.winnerId] || 0) + 1;
+      //   return acc;
+      // }, {});
+
+      // const matchWinnerID = Number(
+      //   Object.keys(winnerCounter).reduce((a, b) =>
+      //     winnerCounter[a] > winnerCounter[b] ? a : b
+      //   )
+      // );
+
+      // groupedData.winnerId = matchWinnerID;
+
+      // groupedData.totalSetsPlayer1 = winnerCounter[groupedData.player1.id] || 0;
+      // groupedData.totalSetsPlayer2 = winnerCounter[groupedData.player2.id] || 0;
+
+      res.send(rows);
+    } catch (err) {
+      console.error(err);
+      res.status(500).send("Internal Server Error");
+    }
+  }
+);
 
 module.exports = router;
