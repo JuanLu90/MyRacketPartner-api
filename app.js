@@ -6,6 +6,7 @@ const cors = require("cors");
 const helmet = require("helmet");
 
 const indexRouter = require("./routes/index");
+const apiAuth = require("./routes/api/apiAuth");
 const apiMatches = require("./routes/api/apiMatches");
 
 const app = express();
@@ -22,6 +23,7 @@ app.use(express.static(path.join(__dirname, "../client/build")));
 
 // Define routes
 app.use("/", indexRouter);
+app.use("/api/auth", apiAuth);
 app.use("/api/matches", apiMatches);
 
 // The "catchall" handler: for any request that doesn't
