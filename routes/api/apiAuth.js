@@ -38,14 +38,9 @@ router.post("/login", async (req, res, next) => {
   }
 
   try {
-    const [result] = await dbConn.promise().execute(
-      `SELECT u.*, p.playerID 
-        FROM users u 
-        LEFT JOIN players p ON u.userID = p.userID 
-        WHERE u.email = ?
-      `,
-      [email]
-    );
+    const [result] = await dbConn
+      .promise()
+      .execute(`SELECT * FROM users WHERE email = ?`, [email]);
 
     if (result.length == 0) {
       console.log("--------> User does not exist");
@@ -55,7 +50,6 @@ router.post("/login", async (req, res, next) => {
         id: result[0].userID,
         username: result[0].userName,
         email: result[0].email,
-        playerID: result[0].playerID,
         profileImage: result[0].profileImage,
       };
 
@@ -157,17 +151,11 @@ router.post("/register", async (req, res, next) => {
         [user.userName, hashedPassword, user.userRole, Date.now(), userID]
       );
 
-      const [rowPlayer] = await dbConn.promise().query(
-        `INSERT INTO players (playerName, SportID, userID)
-              VALUES (?, '1', ?)`,
-        [user.userName, userID]
-      );
-
       await dbConn
         .promise()
         .query(
-          `INSERT INTO participations (playerID, tournamentID) VALUES (?, ?)`,
-          [rowPlayer.insertId, tournamentResults[0].tournamentID]
+          `INSERT INTO participations (userID, tournamentID) VALUES (?, ?)`,
+          [userID, tournamentResults[0].tournamentID]
         );
 
       await dbConn.promise().execute(
@@ -208,15 +196,10 @@ router.post("/register", async (req, res, next) => {
           message: "Username already exists. Choose another.",
         });
       } else {
-        const [rowUser] = await dbConn.promise().execute(
+        await dbConn.promise().execute(
           `INSERT INTO users (userName, email, password, userRole, createDate)
           VALUES (?, ?, ?, ?, NOW())`, // No necesitas STR_TO_DATE aquí
           [user.userName, user.email, hashedPassword, user.userRole]
-        );
-        await dbConn.promise().query(
-          `INSERT INTO players (playerName, SportID, userID)
-                VALUES (?, '1', ?)`,
-          [user.userName, rowUser.insertId]
         );
 
         console.log("--------> Created new User");
@@ -242,26 +225,16 @@ router.post("/google", async (req, res, next) => {
     const payload = ticket.getPayload();
     const googleID = payload["sub"];
 
-    const { email, picture, given_name, family_name } = payload;
+    const { email, picture, given_name } = payload;
 
-    const [resultGoogle] = await dbConn.promise().execute(
-      `SELECT u.*, p.playerID 
-        FROM users u 
-        LEFT JOIN players p ON u.userID = p.userID 
-        WHERE u.googleID = ?
-      `,
-      [googleID]
-    );
+    const [resultGoogle] = await dbConn
+      .promise()
+      .execute(`SELECT * FROM users WHERE googleID = ?`, [googleID]);
 
     if (!resultGoogle.length) {
-      const [result] = await dbConn.promise().execute(
-        `SELECT u.*, p.playerID 
-        FROM users u 
-        LEFT JOIN players p ON u.userID = p.userID 
-        WHERE u.email = ?
-      `,
-        [email]
-      );
+      const [result] = await dbConn
+        .promise()
+        .execute(`SELECT * FROM users WHERE email = ?`, [email]);
 
       if (!result.length) {
         const user = {
@@ -310,17 +283,11 @@ router.post("/google", async (req, res, next) => {
             [user.userName, user.userRole, Date.now(), userID]
           );
 
-          const [rowPlayer] = await dbConn.promise().query(
-            `INSERT INTO players (playerName, SportID, userID)
-                  VALUES (?, '1', ?)`,
-            [user.userName, userID]
-          );
-
           await dbConn
             .promise()
             .query(
-              `INSERT INTO participations (playerID, tournamentID) VALUES (?, ?)`,
-              [rowPlayer.insertId, tournamentResults[0].tournamentID]
+              `INSERT INTO participations (userID, tournamentID) VALUES (?, ?)`,
+              [userID, tournamentResults[0].tournamentID]
             );
 
           await dbConn.promise().execute(
@@ -345,17 +312,10 @@ router.post("/google", async (req, res, next) => {
             ]
           );
 
-          const [rowPlayer] = await dbConn.promise().query(
-            `INSERT INTO players (playerName, SportID, userID)
-                    VALUES (?, '1', ?)`,
-            [user.userName, rowUser.insertId]
-          );
-
           const finalUser = {
             id: rowUser.insertId,
             username: given_name,
             email: email,
-            playerID: rowPlayer.insertId,
             profileImage: picture,
           };
 
@@ -371,7 +331,6 @@ router.post("/google", async (req, res, next) => {
           id: result[0].userID,
           username: result[0].userName,
           email: result[0].email,
-          playerID: result[0].playerID,
           profileImage: result[0].profileImage,
         };
 
@@ -395,7 +354,6 @@ router.post("/google", async (req, res, next) => {
         id: resultGoogle[0].userID,
         username: resultGoogle[0].userName,
         email: resultGoogle[0].email,
-        playerID: resultGoogle[0].playerID,
         profileImage: resultGoogle[0].profileImage,
       };
 

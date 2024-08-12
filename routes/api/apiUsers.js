@@ -9,7 +9,7 @@ router.get("/userProfile/:userID", async function (req, res, next) {
     const userID = req.params.userID;
 
     const [rows] = await dbConn.promise().query(
-      `SELECT firstName, lastName, createDate, gender, birthdate, userName, dominantHand, backhand 
+      `SELECT firstName, lastName, createDate, gender, birthdate, userName, profileImage, dominantHand, backhand 
         FROM users WHERE userID = ?`,
       [userID]
     );
