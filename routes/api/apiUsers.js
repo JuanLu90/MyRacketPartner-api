@@ -9,12 +9,8 @@ router.get("/userProfile/:userID", async function (req, res, next) {
     const userID = req.params.userID;
 
     const [rows] = await dbConn.promise().query(
-      `SELECT u.firstName, u.lastName, u.createDate, u.gender, u.birthdate, 
-      p.playerName, p.dominantHand, p.backhand
-        FROM users u 
-        LEFT JOIN players p ON u.userID = p.userID 
-        WHERE u.userID = ?
-      `,
+      `SELECT firstName, lastName, createDate, gender, birthdate, userName, dominantHand, backhand 
+        FROM users WHERE userID = ?`,
       [userID]
     );
     res.send(rows);
@@ -62,17 +58,17 @@ router.get("/userProfile/:userID", async function (req, res, next) {
 // );
 
 // router.put(
-//   "/currentUserProfile/editPlayerProfile",
+//   "/currentUserProfile/editUserProfile",
 //   checkJwt,
 //   async (req, res) => {
 //     const data = req.body;
 //     const id = req.token.payload.id;
 //     console.log(data);
 //     // Construye dinámicamente la consulta SQL y los valores
-//     let sql = "UPDATE players SET ";
+//     let sql = "UPDATE users SET ";
 //     let values = [];
 //     for (let key in data) {
-//       if (key === "playerName" && data[key]?.length > 40) {
+//       if (key === "userName" && data[key]?.length > 40) {
 //         return res.status(400).send("Fields max length 40 characters");
 //       }
 //       sql += `${key} = ?, `;
