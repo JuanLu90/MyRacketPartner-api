@@ -92,24 +92,22 @@ router.get("/userProfile/:userID", async function (req, res, next) {
 //   }
 // );
 
-// router.post("/sendSuggestions", checkJwt, async function (req, res, next) {
-//   try {
-//     const data = req.body;
-
-//     if (data.suggestions.length > 3000) {
-//       return res.status(400).send("Suggestions max length 3000 characters");
-//     }
-
-//     await dbConn.promise().execute(
-//       `INSERT INTO suggestions (suggestion, shareSuggestion, creationDate, userID)
-//      VALUES (?, ?, NOW(), ?)`,
-//       [data.suggestions, data.shareSuggestion, req.userID]
-//     );
-
-//     res.send("Thanks for your suggestion!");
-//   } catch (err) {
-//     res.status(400).send({ e: err.errno });
-//   }
-// });
+router.post("/sendSuggestions", checkJwt, async function (req, res, next) {
+  try {
+    const userID = req.token.payload.id;
+    const data = req.body;
+    if (data.suggestions.length > 3000) {
+      return res.status(400).send("Suggestions max length 3000 characters");
+    }
+    await dbConn.promise().execute(
+      `INSERT INTO suggestions (suggestion, shareSuggestion, creationDate, userID)
+         VALUES (?, ?, NOW(), ?)`,
+      [data.suggestions, data.shareSuggestion, userID]
+    );
+    res.send("Thanks for your suggestion!");
+  } catch (err) {
+    res.status(400).send({ e: err.errno });
+  }
+});
 
 module.exports = router;
