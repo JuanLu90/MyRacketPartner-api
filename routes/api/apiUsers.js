@@ -23,7 +23,7 @@ router.get("/userProfile/:userID", async function (req, res, next) {
 
     const [rows] = await dbConn.promise().query(
       `SELECT email, firstName, lastName, createDate, gender, birthdate, 
-        userName, profileImage, dominantHand, backhand, height, weight
+        userName, profileImage, dominantHand, backhand, height, weight, country
         FROM users WHERE userID = ?`,
       [userID]
     );
@@ -37,6 +37,7 @@ router.put(
   "/currentUserProfile/editUserProfile",
   checkJwt,
   async (req, res) => {
+    console.log("aaaa");
     const data = req.body;
     const id = req.token.payload.id;
     console.log(data);
@@ -129,6 +130,24 @@ router.post("/sendSuggestions", checkJwt, async function (req, res, next) {
     res.send("Thanks for your suggestion!");
   } catch (err) {
     res.status(400).send({ e: err.errno });
+  }
+});
+
+router.get("/usersSearch/:username", async function (req, res) {
+  const username = req.params.username;
+
+  console.log(username);
+  try {
+    const [rows] = await dbConn
+      .promise()
+      .execute(
+        "SELECT userID, email, userName, firstName, lastName, profileImage FROM users WHERE userName LIKE ?",
+        [`%${username}%`]
+      );
+    res.send(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Internal Server Error");
   }
 });
 

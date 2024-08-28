@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const dbConn = require("../../config/db");
-// const { checkJwt } = require("../../middleware/checkJwt");
+const { checkJwt } = require("../../middleware/checkJwt");
 
 //token sent, WORKS FINE!!
 router.get("/matches", async (req, res, next) => {
@@ -14,7 +14,6 @@ router.get("/matches", async (req, res, next) => {
       P1.userName AS user1Name,
       P2.userID AS user2ID,
       P2.userName AS user2Name,
-      S.setID,
       S.user1Score,
       S.user2Score,
       S.winnerID
@@ -250,5 +249,160 @@ router.get(
     }
   }
 );
+
+router.post("/newMatch", checkJwt, (req, res) => {
+  const data = req.body;
+
+  if (data.sets.length === 3) {
+    const thirdSet = data.sets[2];
+
+    // Verificar si el tercer set no tiene información válida
+    const isThirdSetInvalid =
+      thirdSet.user1Score == null || thirdSet.user2Score == null;
+
+    if (isThirdSetInvalid) {
+      // Eliminar el tercer set si no es válido
+      data.sets.pop();
+    }
+  }
+
+  // Verifica que llegan los IDs de ambos jugadores
+  if (!data.user1ID || !data.user2ID) {
+    return res.status(400).send({
+      error: "011",
+      message: "User ID empty",
+    });
+  }
+
+  // Determinar el ganador de cada set
+  data.sets = data.sets.map((set) => {
+    if (set.user1Score > set.user2Score) {
+      return { ...set, winnerID: data.user1ID };
+    } else if (set.user1Score < set.user2Score) {
+      return { ...set, winnerID: data.user2ID };
+    } else {
+      return { ...set, winnerID: null }; // En caso de empate
+    }
+  });
+
+  // Contar las victorias de cada jugador
+  let user1Wins = 0;
+  let user2Wins = 0;
+
+  data.sets.forEach((set) => {
+    if (set.winnerID === data.user1ID) {
+      user1Wins++;
+    } else if (set.winnerID === data.user2ID) {
+      user2Wins++;
+    }
+  });
+
+  // Determinar el ganador del partido
+  if (user1Wins > user2Wins) {
+    data.winnerID = data.user1ID;
+  } else if (user1Wins < user2Wins) {
+    data.winnerID = data.user2ID;
+  } else {
+    data.winnerID = null; // En caso de empate
+  }
+
+  const { sets, ...matchResultWithoutSets } = data;
+
+  // Validar el número de sets
+  if (data.sets.length < 2 || data.sets.length > 3) {
+    return res.status(400).send({
+      error: "010",
+      message: "Error with the numbers of sets",
+    });
+  }
+
+  const handleErrorSetScore = (codeError, setNumber) =>
+    res.status(400).send({
+      error: codeError,
+      message: `Error score in set ${setNumber + 1}`,
+    });
+
+  // Validar la puntuación de cada set
+  for (const [i, set] of data.sets.entries()) {
+    if (set.user1Score === null || set.user2Score === null)
+      return handleErrorSetScore("001", i);
+
+    if (set.user1Score === 7 && set.user2Score < 5)
+      return handleErrorSetScore("002", i);
+
+    if (set.user2Score === 7 && set.user1Score < 5)
+      return handleErrorSetScore("003", i);
+
+    if (set.user1Score > 7 || set.user2Score > 7)
+      return handleErrorSetScore("004", i);
+
+    if (set.user1Score === 7 && set.user2Score >= 7)
+      return handleErrorSetScore("005", i);
+
+    if (set.user1Score < 6 && set.user2Score < 6)
+      return handleErrorSetScore("006", i);
+
+    if (set.user1Score === 6 && set.user2Score === 5)
+      return handleErrorSetScore("007", i);
+
+    if (set.user2Score === 6 && set.user1Score === 5)
+      return handleErrorSetScore("008", i);
+  }
+
+  // Validar que no haya un tercer set si un jugador gana dos sets seguidos
+  // Validar que no haya un tercer set si un jugador gana dos sets seguidos
+  if (data.sets.length === 3) {
+    const thirdSet = data.sets[2];
+
+    // Verificar si el tercer set tiene información válida
+    const isThirdSetValid =
+      thirdSet.user1Score != null && thirdSet.user2Score != null;
+
+    if (isThirdSetValid) {
+      // Si el tercer set es válido y los dos primeros sets tienen el mismo ganador
+      if (data.sets[0].winnerID === data.sets[1].winnerID) {
+        return res.status(400).send({
+          error: "009",
+          message: "Error in the order of the sets",
+        });
+      }
+    }
+  }
+
+  // Validar que el ganador del partido sea el mismo que el ganador de la mayoría de los sets
+  const setsWonByUser1 = data.sets.filter(
+    (set) => set.winnerID === data.user1ID
+  ).length;
+  const setsWonByUser2 = data.sets.filter(
+    (set) => set.winnerID === data.user2ID
+  ).length;
+
+  if (
+    (setsWonByUser1 > setsWonByUser2 && data.winnerID !== data.user1ID) ||
+    (setsWonByUser2 > setsWonByUser1 && data.winnerID !== data.user2ID)
+  ) {
+    return res.status(400).send({
+      error: "009",
+      message: "Error with the winner of the match",
+    });
+  }
+
+  dbConn.query(
+    "INSERT INTO matchresults set ?",
+    [matchResultWithoutSets],
+    (err, rows) => {
+      if (err) throw err;
+      const matchID = rows.insertId;
+      sets.forEach((element) => {
+        const newElement = { ...element, matchID };
+        dbConn.query("INSERT INTO sets set ?", [newElement], (err, rows) => {
+          if (err) throw err;
+        });
+      });
+
+      res.send("Match created successfully");
+    }
+  );
+});
 
 module.exports = router;
