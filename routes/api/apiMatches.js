@@ -10,23 +10,23 @@ router.get("/matches", async (req, res, next) => {
       `SELECT 
       MR.matchID,
       DATE_FORMAT(MR.matchDate, '%Y-%m-%d %H:%i:%s') as matchDate,
-      P1.userID AS user1ID,
-      P1.userName AS user1Name,
-      P2.userID AS user2ID,
-      P2.userName AS user2Name,
+      U1.userID AS user1ID,
+      U1.userName AS user1Name,
+      U1.profileImage AS user1ProfileImage,
+      U2.userID AS user2ID,
+      U2.userName AS user2Name,
+      U2.profileImage AS user2ProfileImage,
       S.user1Score,
       S.user2Score,
       S.winnerID
   FROM 
       matchresults MR
   JOIN 
-      users P1 ON MR.user1ID = P1.userID
+      users U1 ON MR.user1ID = U1.userID
   JOIN 
-      users P2 ON MR.user2ID = P2.userID
+      users U2 ON MR.user2ID = U2.userID
   JOIN 
       sets S ON MR.matchID = S.matchID
-  JOIN 
-      users PW ON MR.winnerID = PW.userID
   WHERE 
       MR.tournamentID IS NULL;`
     );
@@ -48,8 +48,10 @@ router.get("/matchDetails/:matchID", async (req, res, next) => {
         DATE_FORMAT(MR.matchDate, '%Y-%m-%d %H:%i:%s') as matchDate,
         U1.userID AS user1ID,
         U1.userName AS user1Name,
+        U1.profileImage AS user1ProfileImage,
         U2.userID AS user2ID,
         U2.userName AS user2Name,
+        U2.profileImage AS user2ProfileImage,
         S.setID,
         S.user1Score,
         S.user2Score,
@@ -74,10 +76,12 @@ router.get("/matchDetails/:matchID", async (req, res, next) => {
       user1: {
         id: rows[0].user1ID,
         name: rows[0].user1Name,
+        profileImage: rows[0].user1ProfileImage,
       },
       user2: {
         id: rows[0].user2ID,
         name: rows[0].user2Name,
+        profileImage: rows[0].user2ProfileImage,
       },
       winnerId: 0,
       sets: rows.map((set) => ({
