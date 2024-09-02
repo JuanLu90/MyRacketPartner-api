@@ -37,10 +37,8 @@ router.put(
   "/currentUserProfile/editUserProfile",
   checkJwt,
   async (req, res) => {
-    console.log("aaaa");
     const data = req.body;
     const id = req.token.payload.id;
-    console.log(data);
 
     // Construye dinámicamente la consulta SQL y los valores
     let sql = "UPDATE users SET ";
@@ -136,7 +134,6 @@ router.post("/sendSuggestions", checkJwt, async function (req, res, next) {
 router.get("/usersSearch/:username", async function (req, res) {
   const username = req.params.username;
 
-  console.log(username);
   try {
     const [rows] = await dbConn
       .promise()
