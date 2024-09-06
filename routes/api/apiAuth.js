@@ -132,9 +132,9 @@ router.post("/register", async (req, res, next) => {
       });
     } else {
       await dbConn.promise().execute(
-        `INSERT INTO users (userName, email, password, userRole, createDate)
-          VALUES (?, ?, ?, ?, NOW())`, // No necesitas STR_TO_DATE aquí
-        [user.userName, user.email, hashedPassword, user.userRole]
+        `INSERT INTO users (userName, email, password, createDate)
+          VALUES (?, ?, ?, NOW())`, // No necesitas STR_TO_DATE aquí
+        [user.userName, user.email, hashedPassword]
       );
 
       console.log("--------> Created new User");
@@ -176,7 +176,6 @@ router.post("/google", async (req, res, next) => {
           userName: given_name,
           email: email,
           profileImage: picture,
-          userRole: "Admin",
         };
 
         if (tournamentUrl) {
@@ -212,9 +211,9 @@ router.post("/google", async (req, res, next) => {
 
           await dbConn.promise().execute(
             `UPDATE users 
-             SET userName = ?, userRole = ?, createDate = ? 
+             SET userName = ?, createDate = ? 
              WHERE userID = ?`,
-            [user.userName, user.userRole, Date.now(), userID]
+            [user.userName, Date.now(), userID]
           );
 
           await dbConn
@@ -235,15 +234,9 @@ router.post("/google", async (req, res, next) => {
           res.send("Invitation accepted and user created");
         } else {
           const [rowUser] = await dbConn.promise().execute(
-            `INSERT INTO users (userName, email, userRole, createDate, profileImage, googleID)
-            VALUES (?, ?, ?, NOW(), ?, ?)`,
-            [
-              user.userName,
-              user.email,
-              user.userRole,
-              user.profileImage,
-              user.googleID,
-            ]
+            `INSERT INTO users (userName, email, createDate, profileImage, googleID)
+            VALUES (?, ?, NOW(), ?, ?)`,
+            [user.userName, user.email, user.profileImage, user.googleID]
           );
 
           const finalUser = {
