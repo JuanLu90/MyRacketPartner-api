@@ -74,25 +74,16 @@ router.post("/login", async (req, res, next) => {
 //own register app
 router.post("/register", async (req, res, next) => {
   const userInfo = req.body.user;
-  const tournamentUrl = req.body.tournamentUrl;
+
+  if (!userInfo?.userName || !userInfo?.email || !userInfo?.password) {
+    return res.status(400).send("All fields are required");
+  }
 
   const user = {
     userName: userInfo.userName,
     email: userInfo.email,
     password: userInfo.password,
-    userRole: userInfo.userRole,
   };
-
-  if (
-    !user.userName ||
-    // !user.firstName ||
-    // !user.lastName ||
-    !user.email ||
-    !user.password ||
-    !user.userRole
-  ) {
-    return res.status(400).send("Todos los campos son obligatorios");
-  }
 
   const passwordRegex = new RegExp(
     "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)[a-zA-Z\\d]{6,12}$"
@@ -108,103 +99,46 @@ router.post("/register", async (req, res, next) => {
       .send(
         "The password does not meet the requirements:\n- Between 8 characters and 12 characters\n- At least one capital letter and one number"
       );
+  } else if (user?.userName?.length < 3 || user?.userName?.length > 20) {
+    return res
+      .status(400)
+      .send("The username must be between 3 characters and 20 characters");
   }
 
   const hashedPassword = await bcrypt.hash(user.password, 10); // 10 es el número de rondas de salting
 
   try {
-    if (tournamentUrl) {
-      const [tournamentResults] = await dbConn
-        .promise()
-        .query(
-          "SELECT tournamentID, name, description, format, mode FROM tournaments WHERE url = ?",
-          [tournamentUrl]
-        );
+    const [resultEmail] = await dbConn
+      .promise()
+      .execute("SELECT userID FROM users WHERE email = ?", [user.email]);
 
-      if (tournamentResults.length === 0) {
-        return res.status(404).send("Tournament not found");
-      }
+    const [resultUserName] = await dbConn
+      .promise()
+      .execute("SELECT userID FROM users WHERE userName = ?", [user.userName]);
 
-      const [invitationResults] = await dbConn
-        .promise()
-        .query(
-          "SELECT * FROM invitations i INNER JOIN users u ON i.userID = u.userID WHERE u.email = ? AND i.tournamentID = ? AND i.status = 'PENDING'",
-          [user.email, tournamentResults[0].tournamentID]
-        );
-
-      if (invitationResults.length === 0) {
-        return res
-          .status(404)
-          .send("No pending invitation from the tournament for this email");
-      }
-
-      const [userRegistered] = await dbConn
-        .promise()
-        .query("SELECT userID FROM users WHERE email = ?", [user.email]);
-
-      const userID = userRegistered[0].userID;
-
-      await dbConn.promise().execute(
-        `UPDATE users 
-         SET userName = ?, password = ?, userRole = ?, createDate = ? 
-         WHERE userID = ?`,
-        [user.userName, hashedPassword, user.userRole, Date.now(), userID]
-      );
-
-      await dbConn
-        .promise()
-        .query(
-          `INSERT INTO participations (userID, tournamentID) VALUES (?, ?)`,
-          [userID, tournamentResults[0].tournamentID]
-        );
-
-      await dbConn.promise().execute(
-        `UPDATE invitations 
-         SET status = "ACCEPTED" 
-         WHERE userID = ?`,
-        [userID]
-      );
-
-      console.log("--------> Invitation accepted and user created");
-      res.send("Invitation accepted and user created");
+    if (resultEmail.length != 0) {
+      console.log("------> Email already exists");
+      res.status(409).send({
+        errorCode: "01",
+        type: "ERROR",
+        message: "Email already exists. Log in.",
+      });
+    } else if (resultUserName.length != 0) {
+      console.log("------> Username already exists");
+      res.status(409).send({
+        errorCode: "02",
+        type: "ERROR",
+        message: "Username already exists. Choose another.",
+      });
     } else {
-      const [resultEmail] = await dbConn
-        .promise()
-        .execute("SELECT userID FROM users WHERE email = ?", [user.email]);
-
-      const [resultUserName] = await dbConn
-        .promise()
-        .execute("SELECT userID FROM users WHERE userName = ?", [
-          user.userName,
-        ]);
-
-      console.log(user);
-      console.log(resultEmail);
-      console.log(resultUserName);
-      if (resultEmail.length != 0) {
-        console.log("------> Email already exists");
-        res.status(409).send({
-          errorCode: "01",
-          type: "ERROR",
-          message: "Email already exists. Log in.",
-        });
-      } else if (resultUserName.length != 0) {
-        console.log("------> Username already exists");
-        res.status(409).send({
-          errorCode: "02",
-          type: "ERROR",
-          message: "Username already exists. Choose another.",
-        });
-      } else {
-        await dbConn.promise().execute(
-          `INSERT INTO users (userName, email, password, userRole, createDate)
+      await dbConn.promise().execute(
+        `INSERT INTO users (userName, email, password, userRole, createDate)
           VALUES (?, ?, ?, ?, NOW())`, // No necesitas STR_TO_DATE aquí
-          [user.userName, user.email, hashedPassword, user.userRole]
-        );
+        [user.userName, user.email, hashedPassword, user.userRole]
+      );
 
-        console.log("--------> Created new User");
-        res.send("Registered Successfully");
-      }
+      console.log("--------> Created new User");
+      res.send("Registered Successfully");
     }
   } catch (err) {
     console.error(err);
