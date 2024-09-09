@@ -40,19 +40,47 @@ router.put(
     const data = req.body;
     const id = req.token.payload.id;
 
-    // Construye dinámicamente la consulta SQL y los valores
+    if (!data.firstName)
+      return res.status(400).send("Please enter your first name");
+    else if (data.firstName.length < 3 || data.firstName.length > 16)
+      return res
+        .status(400)
+        .send("First name must be between 3 and 16 characters");
+
+    if (!data.lastName) res.status(400).send("Please enter your last name");
+    else if (data.lastName.length < 6 || data.lastName.length > 30)
+      return res
+        .status(400)
+        .send("Last name must be between 6 and 30 characters");
+
+    if ((data.height && data.height < 50) || data.height > 250)
+      return res.status(400).send("Between 50 and 250 centimeters");
+
+    if ((data.weight && data.weight < 2) || data.weight > 300)
+      return res.status(400).send("Between 2 and 300 kilograms");
+
+    if (!data.backhand)
+      return res.status(400).send("Please enter your backhand");
+    else if (
+      data.backhand !== "ONE" &&
+      data.backhand !== "TWO" &&
+      data.backhand !== "NONE"
+    )
+      return res.status(400).send("Please enter a valid backhand");
+
+    if (!data.dominantHand)
+      return res.status(400).send("Please enter your dominantHand");
+    else if (
+      data.dominantHand !== "RIGHT" &&
+      data.dominantHand !== "LEFT" &&
+      data.dominantHand !== "BOTH"
+    )
+      return res.status(400).send("Please enter a valid dominant hand");
+
     let sql = "UPDATE users SET ";
     let values = [];
 
     for (let key in data) {
-      if (
-        (key === "firstName" || key === "lastName") &&
-        data[key]?.length > 40
-      ) {
-        return res.status(400).send("Fields max length 40 characters");
-      }
-
-      // Convierte los campos de fecha a formato YYYY-MM-DD
       if (key === "birthdate" && data[key]) {
         data[key] = formatDateForDB(data[key]);
       }
@@ -61,7 +89,7 @@ router.put(
       values.push(data[key]);
     }
 
-    sql = sql.slice(0, -2); // Elimina la última coma y espacio
+    sql = sql.slice(0, -2);
     sql += " WHERE userID = ?";
     values.push(id);
 
@@ -78,40 +106,6 @@ router.put(
     }
   }
 );
-
-//   "/currentUserProfile/editUserProfile",
-//   checkJwt,
-//   async (req, res) => {
-//     const data = req.body;
-//     const id = req.token.payload.id;
-//     console.log(data);
-//     // Construye dinámicamente la consulta SQL y los valores
-//     let sql = "UPDATE users SET ";
-//     let values = [];
-//     for (let key in data) {
-//       if (key === "userName" && data[key]?.length > 40) {
-//         return res.status(400).send("Fields max length 40 characters");
-//       }
-//       sql += `${key} = ?, `;
-//       values.push(data[key]);
-//     }
-//     sql = sql.slice(0, -2); // Elimina la última coma y espacio
-//     sql += " WHERE userID = ?";
-//     values.push(id);
-
-//     try {
-//       await dbConn.promise().execute(sql, values);
-//       res.send({
-//         type: "SUCCESS",
-//         message: "Updated successfully",
-//         data: data,
-//       });
-//     } catch (err) {
-//       console.error(err);
-//       res.status(500).send("Internal Server Error");
-//     }
-//   }
-// );
 
 router.post("/sendSuggestions", checkJwt, async function (req, res, next) {
   try {
