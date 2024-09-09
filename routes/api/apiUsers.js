@@ -111,8 +111,8 @@ router.post("/sendSuggestions", checkJwt, async function (req, res, next) {
   try {
     const userID = req.token.payload.id;
     const data = req.body;
-    if (data.suggestions.length > 3000) {
-      return res.status(400).send("Suggestions max length 3000 characters");
+    if (data.suggestions.length < 6 || data.suggestions.length > 300) {
+      return res.status(400).send("Suggestions max length 300 characters");
     }
     await dbConn.promise().execute(
       `INSERT INTO suggestions (suggestion, shareSuggestion, creationDate, userID)
