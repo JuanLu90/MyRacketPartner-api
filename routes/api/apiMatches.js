@@ -76,12 +76,21 @@ router.get("/matches", async (req, res, next) => {
           }
           winnerCounter[set.winnerID]++;
         });
-        const matchWinner = Number(
-          Object.keys(winnerCounter).reduce((a, b) =>
-            winnerCounter[a] > winnerCounter[b] ? a : b
-          )
-        );
-        match.matchWinner = matchWinner;
+
+        const winnerIDs = Object.keys(winnerCounter);
+        if (
+          winnerCounter[winnerIDs[0]] === 1 &&
+          winnerCounter[winnerIDs[1]] === 1
+        ) {
+          match.matchWinner = null; // O puedes usar una lógica que represente empate
+        } else {
+          const matchWinner = Number(
+            Object.keys(winnerCounter).reduce((a, b) =>
+              winnerCounter[a] > winnerCounter[b] ? a : b
+            )
+          );
+          match.matchWinner = matchWinner;
+        }
       });
 
       return Object.values(grouped);
@@ -151,18 +160,27 @@ router.get("/matchDetails/:matchID", async (req, res, next) => {
       totalSetsUser2: 0,
     };
 
+    // Calcular el número de sets ganados por cada jugador
     const winnerCounter = groupedData.sets.reduce((acc, set) => {
       acc[set.winnerID] = (acc[set.winnerID] || 0) + 1;
       return acc;
     }, {});
 
-    const matchWinnerID = Number(
-      Object.keys(winnerCounter).reduce((a, b) =>
-        winnerCounter[a] > winnerCounter[b] ? a : b
-      )
-    );
+    // Obtener los IDs de los jugadores
+    const winnerIDs = Object.keys(winnerCounter);
 
-    groupedData.winnerID = matchWinnerID;
+    // Comprobar si ambos jugadores han ganado el mismo número de sets
+    if (winnerCounter[winnerIDs[0]] === winnerCounter[winnerIDs[1]]) {
+      groupedData.winnerID = 0; // Aquí puedes usar 0 o cualquier valor que represente un empate
+    } else {
+      // Determinar el ganador si no es empate
+      const matchWinnerID = Number(
+        winnerIDs.reduce((a, b) =>
+          winnerCounter[a] > winnerCounter[b] ? a : b
+        )
+      );
+      groupedData.winnerID = matchWinnerID;
+    }
 
     groupedData.totalSetsUser1 = winnerCounter[groupedData.user1.id] || 0;
     groupedData.totalSetsUser2 = winnerCounter[groupedData.user2.id] || 0;
@@ -370,12 +388,12 @@ router.post("/newMatch", checkJwt, (req, res) => {
   const { sets, ...matchResultWithoutSets } = data;
 
   // Validar el número de sets
-  if (data.sets.length < 2 || data.sets.length > 3) {
-    return res.status(400).send({
-      error: "010",
-      message: "Error with the numbers of sets",
-    });
-  }
+  // if (data.sets.length < 2 || data.sets.length > 3) {
+  //   return res.status(400).send({
+  //     error: "010",
+  //     message: "Error with the numbers of sets",
+  //   });
+  // }
 
   const handleErrorSetScore = (codeError, setNumber) =>
     res.status(400).send({
@@ -468,8 +486,7 @@ router.post("/newMatch", checkJwt, (req, res) => {
 
 router.put("/editMatch", checkJwt, async (req, res) => {
   const data = req.body;
-  console.log("data");
-  console.log(data);
+
   try {
     // Verifica que llegan los IDs de ambos jugadores
     if (!data.user1ID || !data.user2ID) {
@@ -611,15 +628,10 @@ router.put("/editMatch", checkJwt, async (req, res) => {
 
     values.push(matchID);
 
-    console.log("aaaaaaaaa");
-    console.log(query);
-    console.log(values);
     await dbConn.promise().execute(query, values);
-    console.log(sets);
+
     for (const element of sets) {
       if (element.setID) {
-        console.log("if");
-
         const keys = Object.keys(element);
         const values = Object.values(element);
 
@@ -636,7 +648,6 @@ router.put("/editMatch", checkJwt, async (req, res) => {
 
         await dbConn.promise().execute(query, values);
       } else {
-        console.log("else");
         const newElement = { ...element, matchID };
         const keys = Object.keys(newElement);
         const values = Object.values(newElement);
